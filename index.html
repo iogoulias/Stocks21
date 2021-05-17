@@ -185,7 +185,7 @@ div,h1 {
 				datakind["EARNINGS"] = parse_monthly_earnings["annualEarnings"]
 				return fetch("https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
 			} else {
-			    alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! ")
+			    alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! Please refresh the page! Please refresh the page!")
 				throw "Unexpected Error! Alphavantage Earnings Call Failed"
 			}
 		}).then(xx => xx.json()).then(function(yy) {
@@ -198,7 +198,7 @@ div,h1 {
 				return fetch("https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
 
 			} else {
-			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! ")
+			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! Please refresh the page! ")
 				throw "Unexpected Error! Alphavantage Time Series Failed"
 			}
 		}).then(xxx => xxx.json()).then(function(yyy) {
@@ -209,7 +209,7 @@ div,h1 {
 			datakind["INCOME_STATEMENT"] = parseIncomeStatement["annualReports"];
 				return fetch("https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
 			} else {
-			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! ")
+			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! Please refresh the page! ")
 				throw "Unexpected Error! Alphavantage Income Statement Failed"		
 			}
 		}).then(xxxx => xxxx.json()).then(function(yyyy) {
@@ -219,7 +219,7 @@ div,h1 {
 			datakind["BALANCE_SHEET"] = parseBalanceSheet["annualReports"];	
 			return fetch("https://www.alphavantage.co/query?function=OVERVIEW&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
 			} else {
-			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! ")
+			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! Please refresh the page! ")
 				throw "Unexpected Error! Alphavantage Balance Sheet Failed"		
 			}
 		}).then(xxxxx => xxxxx.json()).then(function(yyyyy) {
@@ -244,7 +244,7 @@ div,h1 {
 			}			
 			Operations(datakind,symbol);
 			} else {
-			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! ")
+			alert("Warning! API call frequency is 5 calls per minute and 500 calls per day! Please refresh the page! ")
 				throw "Unexpected Error! Alphavantage Overview Failed"		
 			}
 		})
