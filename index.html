@@ -1,0 +1,1164 @@
+<html>
+
+<head>
+	<script type='text/javascript' src='https://www.gstatic.com/charts/loader.js'></script>
+</head>
+<style>
+
+.chart_div {	
+	margin-bottom:40px;
+}
+body,
+h1 {
+	background-color: white;
+	color: black;
+	font-family: 'Space Mono', monospace;
+	
+}
+h1 {
+	width: max-content;
+}
+div,h1 {
+	position: relative;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.lds-dual-ring {
+	width: 80px;
+	height: 80px;
+	position: relative;
+	opacity: 0;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.lds-dual-ring:after {
+	content: " ";
+	display: block;
+	width: 64px;
+	height: 64px;
+	margin: 8px;
+	border-radius: 50%;
+	border: 6px solid #000;
+	border-color: #000 transparent #000 transparent;
+	animation: lds-dual-ring 1.2s linear infinite;
+}
+
+@keyframes lds-dual-ring {
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+#searchcontainer {
+	width: max-content;
+}
+
+#spin {
+	margin-top: 10%;
+	position: fixed;
+	margin-left: 45%;
+	z-index: 500;
+}
+</style>
+
+<body>
+	<script>
+	function calculateAverageYearlyPrice(earnings, price) {
+		var yearlyobject = {};
+		var PE = {};
+		var currentYear = new Date().getFullYear();
+		var currentMonth = new Date().getMonth();
+		for(var key in price) {
+			var newkey = key.substring(0, 4);
+			var div = 12;
+			if(currentYear == newkey) {
+				div = parseInt(currentMonth) + 1
+			}
+			if(yearlyobject.hasOwnProperty(newkey)) {
+				yearlyobject[newkey] += price[key]["5. adjusted close"] / div
+			} else {
+				yearlyobject[newkey] = price[key]["5. adjusted close"] / div
+			}
+		}
+		for(var key in earnings) {
+			if(key.substring(0, 4) <= new Date().getFullYear) {
+				console.log(earnings[key]);
+				PE[key] = yearlyobject[(key).substring(0, 4)] / earnings[key]["reportedEPS"]
+			}
+		}
+		return PE
+	}
+	function RPScalculateAverageYearlyPrice(rps, price) {
+		var yearlyobject = {};
+		var RPS = {};
+		var currentYear = new Date().getFullYear();
+		var currentMonth = new Date().getMonth();
+		for(var key in price) {
+			var newkey = key.substring(0, 4);
+			var div = 12;
+			if(currentYear == newkey) {
+				div = parseInt(currentMonth) + 1
+			}
+			if(yearlyobject.hasOwnProperty(newkey)) {
+				yearlyobject[newkey] += price[key]["5. adjusted close"] / div
+			} else {
+				yearlyobject[newkey] = price[key]["5. adjusted close"] / div
+			}
+		}
+		for(var key in rps) {
+			if(key.substring(0, 4) <= new Date().getFullYear) {
+				RPS[key] = yearlyobject[(key).substring(0, 4)] / rps[key]
+			}
+		}
+		return RPS
+	}
+
+	function createlast10years(mindate) {
+		var mindateparsed = new Date(mindate);
+		var yearsago10 = new Date((new Date()).getFullYear() - 10, 0, 1)
+		if(mindateparsed > yearsago10) {
+			yearsago10 = mindateparsed;
+		}
+		var obj = {}
+		var now = new Date((new Date()).getFullYear(), 11, 31)
+		var difference = Math.floor((now - yearsago10) / (60000 * 60 * 24));
+		for(var i = 0; i < difference; i++) {
+			var temp = new Date((new Date()).getFullYear() - 10, 0, 1);
+			if(new Date(mindate) > temp) {
+				temp = new Date(mindate);
+			}
+			var key = (new Date((temp.setDate(temp.getDate() + i))).toLocaleDateString("en-CA"))
+			if((parseInt(key.substring(5, 7)) < 11 || parseInt(key.substring(5, 7)) > 12) && key.substring(0, 4) <= new Date().getFullYear) {
+				obj[key] = {
+					"reportedEPS": null
+				}
+			}
+		}
+		return obj
+	}
+
+	function getCurrentYearEarnings(earnings) {
+		var lastearning = 0;
+		for(var i = 0; i < 4; i++) {
+			if(i < (earnings["quarterlyEarnings"]).length) {
+				lastearning += parseFloat(earnings["quarterlyEarnings"][i]["reportedEPS"])
+			}
+		}
+		return lastearning;
+	}
+	function getCurrentNetIncome(income) {
+		var lastincome = 0;
+		for(var i = 0; i < 4; i++) {
+			if(i < (income["quarterlyReports"]).length) {
+				lastincome += parseFloat(income["quarterlyReports"][i]["netIncome"])
+			}
+		}
+		return lastincome;
+	}
+	async function testCombineData() {
+		console.log("clicked");
+		document.getElementById("spin").style.opacity = 1;
+		document.getElementById("chart_div0").innerHTML = "";
+		document.getElementById("chart_div1").innerHTML = "";
+		document.getElementById("chart_div2").innerHTML = "";
+		document.getElementById("chart_div3").innerHTML = "";
+		document.getElementById("chart_div4").innerHTML = "";
+		document.getElementById("chart_div5").innerHTML = "";
+		document.getElementById("chart_div6").innerHTML = "";
+		var symbol = document.getElementById('input').value;
+		var datakind = {
+			"EARNINGS": 1,
+			"TIME_SERIES_MONTHLY": 1
+		}
+		await fetch("https://www.alphavantage.co/query?function=EARNINGS&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T").then(x => x.json()).then(function(y) {
+			console.log(y)
+			var parse_monthly_earnings = y;
+			console.log(parse_monthly_earnings)
+			if(parse_monthly_earnings.hasOwnProperty("annualEarnings")) {
+				parse_monthly_earnings["annualEarnings"][0]["reportedEPS"] = getCurrentYearEarnings(parse_monthly_earnings)
+				datakind["EARNINGS"] = parse_monthly_earnings["annualEarnings"]
+				return fetch("https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
+			} else {
+				throw "Unexpected Error! Alphavantage Earnings Call Failed"
+			}
+		}).then(xx => xx.json()).then(function(yy) {
+			console.log(yy)
+			var parse_time_series = yy;
+			console.log(parse_time_series)
+			if(parse_time_series.hasOwnProperty("Monthly Adjusted Time Series")) {
+				datakind["TIME_SERIES_MONTHLY"] = parse_time_series["Monthly Adjusted Time Series"];
+				datakind["EARNINGS"] = reformat(datakind["EARNINGS"], "fiscalDateEnding")
+				return fetch("https://www.alphavantage.co/query?function=INCOME_STATEMENT&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
+
+			} else {
+				throw "Unexpected Error! Alphavantage Time Series Failed"
+			}
+		}).then(xxx => xxx.json()).then(function(yyy) {
+			console.log(yyy)
+			var parseIncomeStatement=yyy;
+			if(parseIncomeStatement.hasOwnProperty("annualReports")) {
+			datakind["NET_INCOME_TTM"]=	getCurrentNetIncome(parseIncomeStatement);
+			datakind["INCOME_STATEMENT"] = parseIncomeStatement["annualReports"];
+				return fetch("https://www.alphavantage.co/query?function=BALANCE_SHEET&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
+			} else {
+				throw "Unexpected Error! Alphavantage Income Statement Failed"		
+			}
+		}).then(xxxx => xxxx.json()).then(function(yyyy) {
+			console.log(yyyy)
+			var parseBalanceSheet=yyyy;
+			if(parseBalanceSheet.hasOwnProperty("annualReports")) {
+			datakind["BALANCE_SHEET"] = parseBalanceSheet["annualReports"];	
+			return fetch("https://www.alphavantage.co/query?function=OVERVIEW&symbol=" + symbol + "&apikey=O1GL6ACLA4VG5N5T")
+			} else {
+				throw "Unexpected Error! Alphavantage Balance Sheet Failed"		
+			}
+		}).then(xxxxx => xxxxx.json()).then(function(yyyyy) {
+			console.log(yyyyy)
+			var overView=yyyyy;
+			if(overView.hasOwnProperty("RevenuePerShareTTM")) {
+			datakind["RevenuePerShareTTM"] = overView["RevenuePerShareTTM"];
+			datakind["RevenueTTM"] = overView["RevenueTTM"];
+			datakind["GrossProfitTTM"] = overView["GrossProfitTTM"];
+			try {
+			if (overView["LastSplitFactor"]!="None") {
+				
+			
+            datakind["LastSplitFactor"] = parseFloat((overView["LastSplitFactor"]).replace(':','/'));		
+            datakind["LastSplitDate"] = (overView["LastSplitDate"]).substring(0,4);
+            } else {
+				throw "No splits"
+			}			
+            } catch (er) {
+            datakind["LastSplitFactor"] = 1;		
+            datakind["LastSplitDate"] = "9999";					
+			}			
+			Operations(datakind,symbol);
+			} else {
+				throw "Unexpected Error! Alphavantage Overview Failed"		
+			}
+		})
+	}
+
+	function reformat(data, parentkey) {
+		var outputdata = {};
+		for(var i = 0; i < data.length; i++) {
+			outputdata[data[i][parentkey]] = data[i]
+		}
+		return outputdata
+	}
+    function Operations(datakind,symbol) {
+		var mindate = Object.keys(datakind["EARNINGS"]).sort()[0];
+				var decadeobj = createlast10years(mindate);
+				var decadeobjRPS={...decadeobj};
+				var decadeobjtotalRevenue={...decadeobj};
+				var decadeobjgrossProfit={...decadeobj};
+				var decadeobjnetIncome={...decadeobj};
+				var yearlyEPS = {}
+				var yearlyRPS = {};
+				var yearlytotalRevenue = {};
+				var yearlygrossProfit = {};
+				var yearlynetIncome = {};
+				var IncomeObject=IncomeBalance(datakind);
+                var RPS_obj=IncomeObject["RPS"];
+				var totalRevenue_obj=IncomeObject["totalRevenue"];
+				var grossProfit_obj=IncomeObject["grossProfit"];
+				var netIncome_obj=IncomeObject["netIncome"];
+				for(var key in datakind["EARNINGS"]) {
+					yearlyEPS[key.substring(0, 4)] = datakind["EARNINGS"][key]
+				}
+				for(var key in decadeobj) {
+					if (yearlyEPS.hasOwnProperty(key.substring(0, 4))) {
+					decadeobj[key] = yearlyEPS[key.substring(0, 4)];
+					} else {
+					decadeobj[key]=0;	
+					}
+				}
+				for(var key in RPS_obj) {
+					yearlyRPS[key.substring(0, 4)] = RPS_obj[key]
+				}
+				var currentYear=(new Date()).getFullYear();
+				for(var key in totalRevenue_obj) {
+					yearlytotalRevenue[key.substring(0, 4)] = totalRevenue_obj[key]
+				}
+				for(var key in grossProfit_obj) {
+					yearlygrossProfit[key.substring(0, 4)] = grossProfit_obj[key]
+				}
+				for(var key in netIncome_obj) {
+					yearlynetIncome[key.substring(0, 4)] = netIncome_obj[key]
+				}
+				if (!yearlytotalRevenue.hasOwnProperty(currentYear)) {					
+					yearlytotalRevenue[currentYear]=datakind["RevenueTTM"]
+				}	
+				if (!yearlygrossProfit.hasOwnProperty(currentYear)) {					
+					yearlygrossProfit[currentYear]=datakind["GrossProfitTTM"]
+				}
+				if (!yearlynetIncome.hasOwnProperty(currentYear)) {					
+					yearlynetIncome[currentYear]=datakind["NET_INCOME_TTM"];
+				}							
+				if (!yearlyRPS.hasOwnProperty(currentYear)) {					
+					yearlyRPS[currentYear]=datakind["RevenuePerShareTTM"]
+				}
+				for (var key in yearlyRPS) {
+					if (key<datakind["LastSplitDate"]) {
+				    yearlyRPS[key]=yearlyRPS[key]/datakind["LastSplitFactor"];
+					}
+				}
+				for(var key in decadeobjRPS) {
+					if (yearlyRPS.hasOwnProperty(key.substring(0, 4))) {
+					decadeobjRPS[key] = yearlyRPS[key.substring(0, 4)];
+					} else {
+					decadeobjRPS[key] = 0;
+					}
+				}
+				var mintotalRevenue=0;
+				var mingrossProfit=0;
+				var minnetIncome=0;
+				for (var key in yearlytotalRevenue) {
+					if (yearlytotalRevenue[key]<mintotalRevenue) {mintotalRevenue=yearlytotalRevenue[key]}
+				}
+				for (var key in yearlygrossProfit) {
+					if (yearlygrossProfit[key]<mingrossProfit) {mingrossProfit=yearlygrossProfit[key]}
+				}
+				for (var key in yearlynetIncome) {
+					if (yearlynetIncome[key]<minnetIncome) {minnetIncome=yearlynetIncome[key]}
+				}
+				for(var key in decadeobjtotalRevenue) {
+					if (yearlytotalRevenue.hasOwnProperty(key.substring(0, 4))) {
+					decadeobjtotalRevenue[key] = yearlytotalRevenue[key.substring(0, 4)];
+					} else {
+					decadeobjtotalRevenue[key]=0;
+					}
+				}
+				for(var key in decadeobjgrossProfit) {
+					if (yearlygrossProfit.hasOwnProperty(key.substring(0, 4))) {
+					decadeobjgrossProfit[key] = yearlygrossProfit[key.substring(0, 4)];
+					} else {
+					decadeobjgrossProfit[key] =0
+					}
+				}
+				for(var key in decadeobjnetIncome) {
+					if (yearlynetIncome.hasOwnProperty(key.substring(0, 4))) {
+					decadeobjnetIncome[key] = yearlynetIncome[key.substring(0, 4)];
+					} else {
+					decadeobjnetIncome[key] =0;	
+					}
+				}
+				datakind["EARNINGS"] = decadeobj;
+				
+				var PE = calculateAverageYearlyPrice(datakind["EARNINGS"], datakind["TIME_SERIES_MONTHLY"])
+				var RPSperPrice=RPScalculateAverageYearlyPrice(decadeobjRPS,datakind["TIME_SERIES_MONTHLY"])
+				var graphobject = {}
+				var graphobject_totalRevenue = {};
+				var graphobject_grossProfit = {};
+				var graphobject_netIncome = {};
+				for(var key in datakind["TIME_SERIES_MONTHLY"]) {
+					graphobject[key] = datakind["TIME_SERIES_MONTHLY"][key];
+					graphobject_totalRevenue[key]=datakind["TIME_SERIES_MONTHLY"][key]
+					graphobject_grossProfit[key]=datakind["TIME_SERIES_MONTHLY"][key]
+					graphobject_netIncome[key]=datakind["TIME_SERIES_MONTHLY"][key]
+					if((datakind["EARNINGS"]).hasOwnProperty(key)) {
+						for(var key2 in datakind["EARNINGS"][key]) {
+							graphobject[key][key2] = datakind["EARNINGS"][key][key2]
+						}
+					}
+					if((decadeobjtotalRevenue).hasOwnProperty(key)) {
+							graphobject_totalRevenue[key]["totalRevenue"] = decadeobjtotalRevenue[key]					
+					}
+					if((decadeobjgrossProfit).hasOwnProperty(key)) {
+							graphobject_grossProfit[key]["grossProfit"] = decadeobjgrossProfit[key]					
+					}
+					if((decadeobjnetIncome).hasOwnProperty(key)) {
+							graphobject_netIncome[key]["netIncome"] = decadeobjnetIncome[key]					
+					}
+				}
+				for(var key in datakind["EARNINGS"]) {
+					if(!graphobject.hasOwnProperty(key)) {
+						graphobject[key] = datakind["EARNINGS"][key]
+					}
+				}
+				for(var key in decadeobjtotalRevenue) {
+					if(!graphobject_totalRevenue.hasOwnProperty(key)) {
+						graphobject_totalRevenue[key] = {"totalRevenue":decadeobjtotalRevenue[key]}
+					}
+				}
+				for(var key in decadeobjgrossProfit) {
+					if(!graphobject_grossProfit.hasOwnProperty(key)) {
+						graphobject_grossProfit[key] = {"grossProfit":decadeobjgrossProfit[key]}
+					}
+				}
+				for(var key in decadeobjnetIncome) {
+					if(!graphobject_netIncome.hasOwnProperty(key)) {
+						graphobject_netIncome[key] = {"netIncome":decadeobjnetIncome[key]}
+					}
+				}
+				var transformed_graphobject = graphobject_transformation(graphobject);
+				var transformed_graphobject_PE = graphobject_transformation_PE(PE);
+				var transformed_graphobject_RPS = graphobject_transformation_RPS(decadeobjRPS);
+				var transformed_graphobject_RPSprice = graphobject_transformation_RPSprice(RPSperPrice);
+				var transformed_graphobject_totalRevenue = graphobject_transformation_totalRevenue(graphobject_totalRevenue);
+				var transformed_graphobject_grossProfit = graphobject_transformation_grossProfit(graphobject_grossProfit);
+				var transformed_graphobject_netIncome = graphobject_transformation_netIncome(graphobject_netIncome);
+
+				testGraph2(transformed_graphobject, transformed_graphobject_PE,transformed_graphobject_RPS,transformed_graphobject_RPSprice,transformed_graphobject_totalRevenue,transformed_graphobject_grossProfit,transformed_graphobject_netIncome, symbol, mindate,[mintotalRevenue,mingrossProfit,minnetIncome])
+		
+	}
+	function IncomeBalance(datakind) {
+	var RPS={};
+	var totalRevenue={};
+	var grossProfit={};
+	var netIncome={};
+    for (var i=0;i<(datakind["INCOME_STATEMENT"]).length;i++ ) {
+	RPS[datakind["INCOME_STATEMENT"][i]["fiscalDateEnding"]]=Math.floor(100*datakind["INCOME_STATEMENT"][i]["totalRevenue"]/datakind["BALANCE_SHEET"][i]["commonStockSharesOutstanding"])/100;
+	totalRevenue[datakind["INCOME_STATEMENT"][i]["fiscalDateEnding"]]=datakind["INCOME_STATEMENT"][i]["totalRevenue"];
+	grossProfit[datakind["INCOME_STATEMENT"][i]["fiscalDateEnding"]]=datakind["INCOME_STATEMENT"][i]["grossProfit"];
+	netIncome[datakind["INCOME_STATEMENT"][i]["fiscalDateEnding"]]=datakind["INCOME_STATEMENT"][i]["netIncome"];
+	}	
+	return {"RPS":RPS,"totalRevenue":totalRevenue,"grossProfit":grossProfit,"netIncome":netIncome}
+	}
+	function graphobject_transformation(graphobject) {
+		var ValuesArray = [
+			["Chart #", "Items", "Report Date"]
+		];
+		for(var key in graphobject) {
+			var temp = [];
+			temp.push(1);
+			temp.push({
+				"ReportDate": key,
+				"Chart1": {
+					"Earnings per Share ($)": graphobject[key]["reportedEPS"],
+					"Price ($)": graphobject[key]["5. adjusted close"]
+				}
+			})
+			ValuesArray.push(temp)
+		}
+		return ValuesArray
+	}
+
+	function graphobject_transformation_PE(graphobject) {
+		var ValuesArray = [
+			["Chart #", "Items", "Report Date"]
+		];
+		for(var key in graphobject) {
+			var temp = [];
+			temp.push(1);
+			temp.push({
+				"ReportDate": key,
+				"Chart1": {
+					"Price to Earnings": graphobject[key]
+				}
+			})
+			ValuesArray.push(temp)
+		}
+		return ValuesArray
+	}
+	function graphobject_transformation_RPSprice(graphobject) {
+		var ValuesArray = [
+			["Chart #", "Items", "Report Date"]
+		];
+		for(var key in graphobject) {
+			var temp = [];
+			temp.push(1);
+			temp.push({
+				"ReportDate": key,
+				"Chart1": {
+					"Price to Sales": graphobject[key]
+				}
+			})
+			ValuesArray.push(temp)
+		}
+		return ValuesArray
+	}
+	function graphobject_transformation_totalRevenue(graphobject) {
+		var ValuesArray = [
+			["Chart #", "Items", "Report Date"]
+		];
+		for(var key in graphobject) {
+			var temp = [];
+			temp.push(1);
+			temp.push({
+				"ReportDate": key,
+				"Chart1": {
+					"Sales ($)": graphobject[key]["totalRevenue"],
+					"Price ($)": graphobject[key]["5. adjusted close"]
+				}
+			})
+			ValuesArray.push(temp)
+		}
+		return ValuesArray
+	}
+	function graphobject_transformation_grossProfit(graphobject) {
+		var ValuesArray = [
+			["Chart #", "Items", "Report Date"]
+		];
+		for(var key in graphobject) {
+			var temp = [];
+			temp.push(1);
+			temp.push({
+				"ReportDate": key,
+				"Chart1": {
+					"Gross Profit ($)": graphobject[key]["grossProfit"],
+					"Price ($)": graphobject[key]["5. adjusted close"]
+				}
+			})
+			ValuesArray.push(temp)
+		}
+		return ValuesArray
+	}
+	function graphobject_transformation_netIncome(graphobject) {
+		var ValuesArray = [
+			["Chart #", "Items", "Report Date"]
+		];
+		for(var key in graphobject) {
+			var temp = [];
+			temp.push(1);
+			temp.push({
+				"ReportDate": key,
+				"Chart1": {
+					"Net Income ($)": graphobject[key]["netIncome"],
+					"Price ($)": graphobject[key]["5. adjusted close"]
+				}
+			})
+			ValuesArray.push(temp)
+		}
+		return ValuesArray
+	}
+	function graphobject_transformation_RPS(graphobject) {
+		var ValuesArray = [
+			["Chart #", "Items", "Report Date"]
+		];
+		for(var key in graphobject) {
+			var temp = [];
+			temp.push(1);
+			temp.push({
+				"ReportDate": key,
+				"Chart1": {
+					"Sales per Share ($)": graphobject[key]
+				}
+			})
+			ValuesArray.push(temp)
+		}
+		return ValuesArray
+	}
+
+	function testGraph2(ValuesArray, ValuesArray_PE,ValuesArray_RPS,ValuesArray_RPSperPrice,ValuesArray_totalRevenue,ValuesArray_grossProfit,ValuesArray_netIncome, symbol, mindate,minIncome) {
+		var In = [
+			[{
+				"Title": "",
+				"Value": ["Earnings per Share ($)", "Price ($)"],
+				"Order": 1,
+				"Key": "Chart1"
+			}, 1],
+			[{
+				"Title": "",
+				"Value": ["Price to Earnings"],
+				"Order": 2,
+				"Key": "Chart1"
+			}, 1],
+			[{
+				"Title": "",
+				"Value": ["Sales per Share ($)"],
+				"Order": 3,
+				"Key": "Chart1"
+			}, 1],
+			[{
+				"Title": "",
+				"Value": ["Price to Sales"],
+				"Order": 4,
+				"Key": "Chart1"
+			}, 1],
+			[{
+				"Title": "",
+				"Value": ["Sales ($)","Price ($)"],
+				"Order": 5,
+				"Key": "Chart1"
+			}, 1],
+			[{
+				"Title": "",
+				"Value": ["Gross Profit ($)","Price ($)"],
+				"Order": 6,
+				"Key": "Chart1"
+			}, 1],
+			[{
+				"Title": "",
+				"Value": ["Net Income ($)","Price ($)"],
+				"Order": 7,
+				"Key": "Chart1"
+			}, 1]
+		];
+		Graph2(In, [ValuesArray, ValuesArray_PE,ValuesArray_RPS,ValuesArray_RPSperPrice,ValuesArray_totalRevenue,ValuesArray_grossProfit,ValuesArray_netIncome], symbol, mindate,minIncome)
+	}
+
+	function Graph2(In, ValuesArray, symbol, mindate,minIncome) {
+		var currentyear=(new Date()).getFullYear();
+		var alloptions = "";
+		var alldata = "";
+		var allfunctions = "";
+		var allchartdiv = "";
+		var alldivs = "";
+		var allvisualizations = "";
+		for(var k = 0; k < In.length; k++) {
+			var Title = In[k][0]["Title"];
+			var Item = In[k][0]["Key"];
+			var ValueName = In[k][0]["Value"];
+			var dataforgraph = ValuesArray[k];
+			var response = [];
+			var columnslength = 0;
+			for(var i = 1; i < dataforgraph.length; i++) {
+				var annotationsnum = 0;
+				var JSONDATA = (dataforgraph[i][1]);
+				var temp = [(JSONDATA["ReportDate"]).toString()];
+				for(var j = 0; j < ValueName.length; j++) {
+					temp.push(parseFloat(JSONDATA[Item][ValueName[j]]));
+					if(j == 0 && new Date(temp[0]).getFullYear() == new Date().getFullYear()) {
+						temp.push("#cbdec2");
+					} else if(j == 0) {
+						temp.push("#9fc18e");
+					} else if(j == 1) {
+						temp.push("#3c851c");
+					}
+					if (((JSONDATA["ReportDate"]).toString()).substring(0,4)==currentyear) {
+					temp.push("TTM: "+Math.floor(parseFloat(JSONDATA[Item][ValueName[j]]) * 100) / 100);	
+					} else {
+					temp.push(Math.floor(parseFloat(JSONDATA[Item][ValueName[j]]) * 100) / 100);
+					}
+					annotationsnum = annotationsnum + 2;
+				}
+				columnslength = temp.length - annotationsnum
+				response.push(temp);
+			}
+			response = response.sort(function(a, b) {
+				return new Date(a[0]) - new Date(b[0])
+			});
+			response = response.filter(function(value) {
+				var dt = new Date(value[0]);
+				if(!isNaN(dt.getFullYear())) {
+					value[0] = "Date(" + dt.getFullYear() + "," + dt.getMonth() + "," + dt.getDate() + ")"
+				};
+				return value
+			})
+			var minxaxis = "Date(" + ((new Date()).getFullYear() - 10) + ",1,1)"
+			if(new Date(mindate).getFullYear > (new Date()).getFullYear() - 10) {
+				minxaxis = "Date(" + ((new Date(mindate)).getFullYear()) + ",1,1)"
+			}
+			var columns = [];
+			columns.push({
+				label: 'Year',
+				type: 'date'
+			});
+			for(var j = 0; j < columnslength - 1; j++) {
+				columns.push({
+					label: ValueName[j],
+					type: 'number'
+				});
+				columns.push({
+					type: 'string',
+					role: 'style'
+				})
+				columns.push({
+					type: 'string',
+					role: 'tooltip'
+				})
+			}
+			var response = ([columns]).concat(response);
+			var data = response;
+			var options = [{
+				 legend: { position: 'top' },
+				chartArea: {
+					'width': '80%',
+					'height': '80%'
+				},
+				legend: {
+					textStyle: {
+						color: 'black'
+					}
+				},
+				titleTextStyle: {
+					color: 'black'
+				},
+				colors: ["#9fc18e", "#3c851c","#c4e0c2"],
+				width: 1200,
+				height: 500,
+				backgroundColor: "white",
+				interpolateNulls: true,
+				series: {
+					0: {
+						type: 'bars',
+						targetAxisIndex: 0,
+						timeUnit: "yearmonth"
+					},
+					1: {
+						type: 'line',
+						targetAxisIndex: 1,
+						color: "#3c851c"
+					}
+					,
+					2: {
+						type: 'line',
+						targetAxisIndex: 1,
+						color: "#c4e0c2"
+					}
+				},
+				seriesType: 'line',
+				lineWidth: 4,
+				title: Title,
+				curveType: 'function',
+				vAxis: {
+					0: {
+						title: 'Price ($)',
+						gridlines: {
+							color: 'black'
+						}
+					},
+					1: {
+						title: 'Earnings per Share ($)'
+					},
+					2: {
+						title: 'TTM ($)'
+					},
+					gridlines: {
+						count: 10
+					},
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					}
+				},
+				hAxis: {
+					title: '',
+					format: '   yyyy',
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					},
+					viewWindow: {
+						min: minxaxis
+					}
+				}
+			}, {
+				legend: { position: 'top' },
+				chartArea: {
+					'width': '80%',
+					'height': '80%'
+				},
+				legend: {
+					textStyle: {
+						color: 'black'
+					}
+				},
+				titleTextStyle: {
+					color: 'black'
+				},
+				colors: ["#9fc18e", "#3c851c"],
+				width: 1200,
+				height: 200,
+				backgroundColor: "white",
+				interpolateNulls: true,
+				seriesType: 'bars',
+				title: Title,
+				curveType: 'function',
+				vAxis: {
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					}
+				},
+				hAxis: {
+					title: '',
+					format: 'yyyy',
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					},
+					viewWindow: {
+						min: minxaxis
+					}
+				}
+			},
+			{
+				legend: { position: 'top' },
+				chartArea: {
+					'width': '80%',
+					'height': '80%'
+				},
+				legend: {
+					textStyle: {
+						color: 'black'
+					}
+				},
+				titleTextStyle: {
+					color: 'black'
+				},
+				colors: ["#9fc18e", "#3c851c"],
+				width: 1200,
+				height: 500,
+				backgroundColor: "white",
+				interpolateNulls: true,
+				series: {
+					0: {
+						type: 'bars',
+						targetAxisIndex: 0,
+						timeUnit: "yearmonth"
+					}
+				},
+				seriesType: 'bars',
+				title: Title,
+				curveType: 'function',
+				vAxis: {
+					0: {
+						title: 'Sales per Share ($)'
+					},
+
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					}
+				},
+				hAxis: {
+					title: '',
+					format: 'yyyy',
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					},
+					viewWindow: {
+						min: minxaxis
+					}
+				}
+			},
+			{
+				legend: { position: 'top' },
+				chartArea: {
+					'width': '80%',
+					'height': '80%'
+				},
+				legend: {
+					textStyle: {
+						color: 'black'
+					}
+				},
+				titleTextStyle: {
+					color: 'black'
+				},
+				colors: ["#9fc18e", "#3c851c"],
+				width: 1200,
+				height: 200,
+				backgroundColor: "white",
+				interpolateNulls: true,
+				series: {
+					0: {
+						type: 'bars',
+						targetAxisIndex: 0,
+						timeUnit: "yearmonth"
+					}
+				},
+				seriesType: 'bars',
+				title: Title,
+				curveType: 'function',
+				vAxis: {
+					0: {
+						title: 'Price to Sales'
+					},
+
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					}
+				},
+				hAxis: {
+					title: '',
+					format: 'yyyy',
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					},
+					viewWindow: {
+						min: minxaxis
+					}
+				}
+			},
+			{
+				legend: { position: 'top' },
+				chartArea: {
+					'width': '80%',
+					'height': '80%'
+				},
+				legend: {
+					textStyle: {
+						color: 'black'
+					}
+				},
+				titleTextStyle: {
+					color: 'black'
+				},
+				colors: ["#9fc18e", "#3c851c"],
+				width: 1200,
+				height: 500,
+				backgroundColor: "white",
+				interpolateNulls: true,
+				series: {
+					0: {
+						type: 'bars',
+						targetAxisIndex: 0,
+						timeUnit: "yearmonth"
+					},
+					1: {
+						type: 'line',
+						targetAxisIndex: 1,
+						color: "#3c851c"
+					}
+				},
+				seriesType: 'line',
+				lineWidth: 4,
+				title: Title,
+				curveType: 'function',
+				vAxis: {
+					format:'short',
+					0: {
+						title: 'Price ($)',
+						gridlines: {
+							color: 'black'
+						}
+					},
+					1: {
+						title: 'Gross Profit ($)',
+						
+					viewWindow: {
+						min: minIncome[0]
+					}
+					},
+					gridlines: {
+						count: 10
+					},
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					}
+				},
+				hAxis: {
+					title: '',
+					format: 'yyyy',
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					},
+					viewWindow: {
+						min: minxaxis
+					}
+				}
+			},
+			{
+				legend: { position: 'top' },
+				chartArea: {
+					'width': '80%',
+					'height': '80%'
+				},
+				legend: {
+					textStyle: {
+						color: 'black'
+					}
+				},
+				titleTextStyle: {
+					color: 'black'
+				},
+				colors: ["#9fc18e", "#3c851c"],
+				width: 1200,
+				height: 500,
+				backgroundColor: "white",
+				interpolateNulls: true,
+				series: {
+					0: {
+						type: 'bars',
+						targetAxisIndex: 0,
+						timeUnit: "yearmonth"
+					},
+					1: {
+						type: 'line',
+						targetAxisIndex: 1,
+						color: "#3c851c"
+					}
+				},
+				seriesType: 'line',
+				lineWidth: 4,
+				title: Title,
+				curveType: 'function',
+				vAxis: {
+					format:'short',
+					0: {
+						title: 'Price ($)',
+						gridlines: {
+							color: 'black'
+						}
+					},
+					1: {
+						title: 'Sales ($)',
+						
+					viewWindow: {
+						min: minIncome[1]
+					}
+					},
+					gridlines: {
+						count: 10
+					},
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					}
+				},
+				hAxis: {
+					title: '',
+					format: 'yyyy',
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					},
+					viewWindow: {
+						min: minxaxis
+					}
+				}
+			},
+			{
+				legend: { position: 'top' },
+				chartArea: {
+					'width': '80%',
+					'height': '80%'
+				},
+				legend: {
+					textStyle: {
+						color: 'black'
+					}
+				},
+				titleTextStyle: {
+					color: 'black'
+				},
+				colors: ["#9fc18e", "#3c851c"],
+				width: 1200,
+				height: 500,
+				backgroundColor: "white",
+				interpolateNulls: true,
+				series: {
+					0: {
+						type: 'bars',
+						targetAxisIndex: 0,
+						timeUnit: "yearmonth"
+					},
+					1: {
+						type: 'line',
+						targetAxisIndex: 1,
+						color: "#3c851c"
+					}
+				},
+				seriesType: 'line',
+				lineWidth: 4,
+				title: Title,
+				curveType: 'function',
+				vAxis: {
+					format:'short',
+					0: {
+						title: 'Price ($)',
+						gridlines: {
+							color: 'black'
+						}
+					},
+					1: {
+						title: 'Net Income ($)',
+						
+					viewWindow: {
+						min: minIncome[2]
+					}
+					},
+					gridlines: {
+						count: 10
+					},
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					}
+				},
+				hAxis: {
+					title: '',
+					format: 'yyyy',
+					textStyle: {
+						color: 'black'
+					},
+					titleTextStyle: {
+						color: 'black'
+					},
+					viewWindow: {
+						min: minxaxis
+					}
+				}
+			}
+
+			];
+			alloptions = alloptions + " var options" + k + "=" + JSON.stringify(options[k]) + ";";
+			alldata = alldata + " var data" + k + " = 	google.visualization.arrayToDataTable(" + JSON.stringify(response) + ");"
+			allchartdiv = allchartdiv + " var chart_div" + k + " = document.getElementById('chart_div" + k + "');"
+			allfunctions = allfunctions + " google.visualization.events.addListener(chart" + k + ", 'ready', function () { var removeGridCharts={'0':1,'4':1,'5':1,'6':1};	if(removeGridCharts.hasOwnProperty('" + k + "')) {var gridlines = document.getElementById('chart_div"+k+"').getElementsByTagName('rect'); var tcolor='';var whiteindex=0;var lineIndex = 0;var lineCount = 0; 	Array.prototype.forEach.call(gridlines, function(line)  	{if ((line.getAttribute('height') === '1' && (line.getAttribute('fill')=='#cccccc' || line.getAttribute('fill')=='#ebebeb'))) {	if (tcolor=='#ebebeb' && line.getAttribute('fill')=='#cccccc' ) { whiteindex=lineCount;}	lineCount++; tcolor=line.getAttribute('fill')} }); lineCount = (whiteindex);  Array.prototype.forEach.call(gridlines, function(line) { if( line.getAttribute('height') === '1' && (line.getAttribute('fill')=='#cccccc' || line.getAttribute('fill')=='#ebebeb') && (lineIndex<=lineCount))  {if(lineIndex!=whiteindex+1 || lineIndex==whiteindex){line.setAttribute('fill', 'white');} lineIndex+=1;}}) }   allimages.push([" + k + ",chart" + k + ".getImageURI()]); if(allimages.length==" + (In.length - 1) + ") { document.getElementById(\"spin\").style.opacity = 0; }   });      chart" + k + ".draw(data" + k + ", options" + k + "); "
+			allvisualizations = allvisualizations + " var chart" + k + " = new google.visualization.ComboChart(chart_div" + k + ");"
+		}
+		var html = "    google.charts.load(\"current\", {packages:[\"corechart\"]});    google.charts.setOnLoadCallback(drawChart);  var allimages=[];  function drawChart() {      " + alldata + "   " + alloptions + " " + allchartdiv + "  " + allvisualizations + " " + allfunctions + "  }" + alldivs;
+		console.log(html.replace(/\$\$\$\$\$/g, "script"))
+		eval(html)
+	}
+	</script>
+	<h1>Stocks</h1>
+	<div id="searchcontainer">
+		<input list="stocks" id="input"/>
+		<datalist id="stocks">
+       <option value="AAPL">
+       <option value="FB">
+       <option value="MSFT">
+       <option value="TSLA">
+       <option value="KO">
+       <option value="HOG">
+       <option value="SBUX">
+       <option value="PEP">
+       <option value="DIS">
+       </datalist>
+		<button onclick="testCombineData()">Search</button>
+	</div>
+	<div id="spin" class="lds-dual-ring"></div>
+	<div id="container">
+		<div class='chart_div' id='chart_div0'></div>
+		<div class='chart_div' id='chart_div1'></div>
+		<div class='chart_div' id='chart_div2'></div>
+		<div class='chart_div' id='chart_div3'></div>
+		<div class='chart_div' id='chart_div4'></div>
+		<div class='chart_div' id='chart_div5'></div>
+		<div class='chart_div' id='chart_div6'></div>
+	</div>
+</body>
+
+</html>
